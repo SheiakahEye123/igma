@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from PIL import Image, ImageDraw
+from matplotlib import pyplot as plt
 
 # ok lets get started
 
@@ -11,30 +12,22 @@ AVG_TOLERANCE = 50
 
 
 def betteravgcolor(image):
-    firstavg = np.average(image)
-    finalavg = np.average(firstavg)
-    return finalavg
+    r = np.average(image[:, :, 0])
+    g = np.average(image[:, :, 1])
+    b = np.average(image[:, :, 2])
+
+    averagelist = np.array([r,g,b])
+    #print(averagelist)
+
+    return averagelist
 
 
 def splitIgma(image, xMin, xMax, yMin, yMax):
     splitimg = []
-    nw = []
-    ne = []
-    sw = []
-    se = []
-
-    for i in range(yMax / 2):
-        for e in range(xMax / 2):
-            nw.append(image[i][e])
-    for i in range(yMax / 2):
-        for e in range(xMax / 2):
-            ne.append(image[i + yMax / 2][e + xMax / 2])
-    for i in range(yMax / 2):
-        for e in range(xMax / 2):
-            sw.append(image[i][e + xMax / 2])
-    for i in range(yMax / 2):
-        for e in range(xMax / 2):
-            se.append(image[i + yMax / 2][e])
+    nw = image[0:xMax/2, 0:yMax/2, :]
+    ne = image[xMax/2:xMax, 0:yMax/2, :]
+    sw = image[0:xMax/2, yMax/2:yMax, :]
+    se = image[xMax/2:xMax, yMax/2:yMax, :]
 
     splitimg.append(nw)
     splitimg.append(ne)
@@ -70,11 +63,20 @@ class Quadtree():
         self.sw = Quadtree(self.xMin, self.xMax / 2, self.yMax / 2, self.yMax, splittedImg[2])
         self.se = Quadtree(self.xMax / 2, self.xMax, self.yMax / 2, self.yMax, splittedImg[3])
 
+        self.nw.insert()
+        self.ne.insert()
+        self.sw.insert()
+        self.se.insert()
+
     def insert(self):
         avg = betteravgcolor(self.imageArray)
-        for i in range(self.imageArray.size):
-            for e in range(self.imageArray[0].size):
-                for p in range(self.imageArray[0][0].size):
-                    if avg - AVG_TOLERANCE < self.imageArray[i][e][p] < avg + AVG_TOLERANCE:
-                        self.split()
+        deviation = np.average(self.imageArray - avg,axis=2)
+        print(deviation)
+
+        plt.imshow(deviation, interpolation='nearest')
+        plt.show()
+
+
+baseQuad = Quadtree(0,image.width, 0, image.height, imgarray)
+baseQuad.insert()
 
