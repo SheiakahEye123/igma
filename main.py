@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 image = Image.open("image.png")
 quadtreeList = []
 imgarray = np.asarray(image)
-AVG_TOLERANCE = 50
+AVG_TOLERANCE = 100
 
 
 def betteravgcolor(image):
@@ -16,18 +16,17 @@ def betteravgcolor(image):
     g = np.average(image[:, :, 1])
     b = np.average(image[:, :, 2])
 
-    averagelist = np.array([r,g,b])
-    #print(averagelist)
+    averagelist = np.array([r, g, b])
 
     return averagelist
 
 
 def splitIgma(image, xMin, xMax, yMin, yMax):
     splitimg = []
-    nw = image[0:xMax/2, 0:yMax/2, :]
-    ne = image[xMax/2:xMax, 0:yMax/2, :]
-    sw = image[0:xMax/2, yMax/2:yMax, :]
-    se = image[xMax/2:xMax, yMax/2:yMax, :]
+    nw = image[int(xMin):int(xMax / 2), int(yMin):int(yMax / 2), :]
+    ne = image[int(xMax / 2):int(xMax), int(yMin):int(yMax / 2), :]
+    sw = image[int(xMin):int(xMax / 2), int(yMax / 2):int(yMax), :]
+    se = image[int(xMax / 2):int(xMax), int(yMax / 2):int(yMax), :]
 
     splitimg.append(nw)
     splitimg.append(ne)
@@ -70,13 +69,18 @@ class Quadtree():
 
     def insert(self):
         avg = betteravgcolor(self.imageArray)
-        deviation = np.average(self.imageArray - avg,axis=2)
-        print(deviation)
 
-        plt.imshow(deviation, interpolation='nearest')
-        plt.show()
+        deviation1 = self.imageArray - avg
+        deviation = np.average(deviation1, axis=2, weights=[1,1,1])
+
+        for i in range(len(deviation)):
+            for e in range(len(deviation[0])):
+                if -1 * AVG_TOLERANCE >= deviation[i, e] <= AVG_TOLERANCE:
+                    #print(deviation[i][e])
+                    self.split()
 
 
-baseQuad = Quadtree(0,image.width, 0, image.height, imgarray)
+
+
+baseQuad = Quadtree(0, image.width, 0, image.height, imgarray)
 baseQuad.insert()
-
