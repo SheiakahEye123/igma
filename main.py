@@ -1,32 +1,31 @@
 import numpy as np
-import cv2
 from PIL import Image, ImageDraw
 from matplotlib import pyplot as plt
 
 # ok lets get started
-
-image = Image.open("image.png")
-quadtreeList = []
-imgarray = np.asarray(image)
-AVG_TOLERANCE = 100
+AVG_TOLERANCE = 1
 
 
 def betteravgcolor(image):
-    r = np.average(image[:, :, 0])
-    g = np.average(image[:, :, 1])
-    b = np.average(image[:, :, 2])
+    r = np.nanmean(image[:, :, 0])
+    g = np.nanmean(image[:, :, 1])
+    b = np.nanmean(image[:, :, 2])
 
     averagelist = np.array([r, g, b])
+
+    print('average list is', averagelist)
 
     return averagelist
 
 
 def splitIgma(image, xMin, xMax, yMin, yMax):
     splitimg = []
-    nw = image[int(xMin):int(xMax / 2), int(yMin):int(yMax / 2), :]
-    ne = image[int(xMax / 2):int(xMax), int(yMin):int(yMax / 2), :]
-    sw = image[int(xMin):int(xMax / 2), int(yMax / 2):int(yMax), :]
-    se = image[int(xMax / 2):int(xMax), int(yMax / 2):int(yMax), :]
+    xCenter = int ((xMax + xMin) / 2)
+    yCenter = int ((yMax + yMin) / 2)
+    nw = image[int(xMin):xCenter, int(yMin):yCenter, :]
+    ne = image[xCenter:int(xMax), int(yMin):yCenter, :]
+    sw = image[int(xMin):xCenter, yCenter:int(yMax), :]
+    se = image[xCenter:int(xMax), yCenter:int(yMax), :]
 
     splitimg.append(nw)
     splitimg.append(ne)
@@ -44,7 +43,7 @@ def splitIgma(image, xMin, xMax, yMin, yMax):
 #             minorArray.append(ini)
 
 class Quadtree():
-    def __init__(self, xMin_, xMax_, yMin_, yMax, imageArray_):
+    def __init__(self, xMin_, xMax_, yMin_, yMax, image):
         self.nw = None
         self.ne = None
         self.sw = None
@@ -53,14 +52,15 @@ class Quadtree():
         self.xMax = xMax_
         self.yMin = yMin_
         self.yMax = yMax
-        self.imageArray = imageArray_
+        self.imgarray = image
 
     def split(self):
-        splittedImg = splitIgma(self.imageArray, self.xMin, self.xMax, self.yMin, self.yMax)
-        self.nw = Quadtree(self.xMin, self.xMax / 2, self.yMin, self.yMax / 2, splittedImg[0])
-        self.ne = Quadtree(self.xMax / 2, self.xMax, self.yMin, self.yMax / 2, splittedImg[1])
-        self.sw = Quadtree(self.xMin, self.xMax / 2, self.yMax / 2, self.yMax, splittedImg[2])
-        self.se = Quadtree(self.xMax / 2, self.xMax, self.yMax / 2, self.yMax, splittedImg[3])
+        xCenter = int((self.xMax + self.xMin) / 2)
+        yCenter = int((self.yMax + self.yMin) / 2)
+        self.nw = Quadtree(self.xMin, xCenter, self.yMin, yCenter)
+        self.ne = Quadtree(xCenter, self.xMax, self.yMin, yCenter)
+        self.sw = Quadtree(self.xMin, xCenter, yCenter, self.yMax)
+        self.se = Quadtree(xCenter, self.xMax, yCenter, self.yMax)
 
         self.nw.insert()
         self.ne.insert()
@@ -68,19 +68,34 @@ class Quadtree():
         self.se.insert()
 
     def insert(self):
-        avg = betteravgcolor(self.imageArray)
+        slice = self.imgarray[self.yMin:self.yMax,self.xMin:self.xMax,:]
+        if any(dim <= 20 for dim in slice.shape):
+            return
 
-        deviation1 = self.imageArray - avg
-        deviation = np.average(deviation1, axis=2, weights=[1,1,1])
+        #print('inserting fr subimage of size', self.imageArray.shape)
+        avg = betteravgcolor(slice)
 
-        for i in range(len(deviation)):
-            for e in range(len(deviation[0])):
-                if -1 * AVG_TOLERANCE >= deviation[i, e] <= AVG_TOLERANCE:
-                    #print(deviation[i][e])
-                    self.split()
+        deviation1 = slice - avg
+
+        deviation = np.average(deviation1, axis=2)
+
+        if np.sum(np.abs(deviation)) >= AVG_TOLERANCE:
+            #plt.imshow(deviation)
+            #plt.pause(0.000000000000001)
+            self.split()
+            # sums deviation of the whole image
+            # could try avg deviation?
+
+        else:
+            self.imgarray[self.yMin:self.yMax, self.xMin:self.xMax, :] = avg
 
 
 
 
-baseQuad = Quadtree(0, image.width, 0, image.height, imgarray)
+
+image = Image.open("image.png")
+npimg = np.asarray(image)
+baseQuad = Quadtree(0, image.width, 0, image.height, npimg)
 baseQuad.insert()
+plt.imshow(npimg)
+plt.show()
